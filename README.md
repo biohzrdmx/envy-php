@@ -6,6 +6,50 @@ Simple ENV file parser
 
 First require `biohzrdmx/envy-php` with Composer.
 
+Now create a `.env` file, for example:
+
+```dosini
+APP_NAME=MyApp
+APP_URL=https://app.example.com
+APP_DEFAULT="${APP_URL}/dashboard"
+APP_DEBUG=true
+```
+
+Create now an instance of the `Settings` class:
+
+```php
+use Envy\Settings;
+$settings = new Settings();
+$settings->load( dirname(__FILE__) . '/.env' );
+```
+
+If the file can not be loaded it will throw a `RuntimeException`.
+
+Then simply call the `load($name)` function to get the value of the specified option:
+
+```php
+$app_name = $settings->get('APP_NAME');
+```
+
+You may also define a constant with the same name by using the `define($name)` method:
+
+```php
+$settings->define('APP_NAME');
+echo APP_NAME; # Prints 'MyApp'
+```
+
+Finally, you may test options for existence with the `require($name)` function:
+
+```php
+# Testing for a single option
+$settings->require('APP_NAME');
+
+# Testing for multiple options
+$settings->require([ 'APP_NAME', 'APP_URL' ]);
+```
+
+If a required setting is not available it will throw a `RuntimeException`.
+
 ### Licensing
 
 This software is released under the MIT license.
