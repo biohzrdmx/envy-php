@@ -1,27 +1,34 @@
 <?php
+
+declare(strict_types = 1);
+
+/**
+ * Envy
+ * Easy to use, general purpose CuRL wrapper
+ * @author 	biohzrdmx <github.com/biohzrdmx>
+ * @version 2.0
+ * @license MIT
+ */
+
+namespace Envy;
+
+use RuntimeException;
+
+class Settings {
+
 	/**
-	 * Envy
-	 * Easy to use, general purpose CuRL wrapper
-	 * @author 	biohzrdmx <github.com/biohzrdmx>
-	 * @version 1.0
-	 * @license MIT
+	 * Load settings from the .env file
+	 * @param  string $path Settings path
+	 * @return $this
 	 */
-
-	namespace Envy;
-
-	class Settings {
-
-		/**
-		 * Load settings from the .env file
-		 * @return $this
-		 */
-		function load($path) {
-			if (!is_readable($path)) {
-				$info = (object) pathinfo($path);
-				throw new RuntimeException( sprintf("Load error: '%s' file in folder '%s' is not readable", $info->basename, $info->dirname) );
-			}
-			$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-			$pattern = '/(?:^|\A)\s*([\w\.]+)(?:\s*=\s*?|:\s+?)(\s*\'(?:\\\'|[^\'])*\'|\s*"(?:\"|[^"])*"|[^\#\r\n]+)?\s*(?:\#.*)?(?:$|\z)/';
+	public function load(string $path) {
+		if (!is_readable($path)) {
+			$info = (object) pathinfo($path);
+			throw new RuntimeException( sprintf("Load error: '%s' file in folder '%s' is not readable", $info->basename, $info->dirname) );
+		}
+		$lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+		$pattern = '/(?:^|\A)\s*([\w\.]+)(?:\s*=\s*?|:\s+?)(\s*\'(?:\\\'|[^\'])*\'|\s*"(?:\"|[^"])*"|[^\#\r\n]+)?\s*(?:\#.*)?(?:$|\z)/';
+		if ($lines) {
 			foreach ($lines as $line) {
 				if (strpos(trim($line), '#') === 0) {
 					continue;
@@ -37,81 +44,83 @@
 					}
 				}
 			}
-			return $this;
 		}
+		return $this;
+	}
 
-		/**
-		 * Get a configuration value
-		 * @param  string $name    Value name
-		 * @param  string $default Default value
-		 * @return string
-		 */
-		function get($name, $default = null) {
-			$ret = isset( $_ENV[$name] ) ? $_ENV[$name] : $default;
-			if ($ret === 'true' || $ret === 'false') {
-				$ret = $ret === 'true';
-			}
-			return $ret;
+	/**
+	 * Get a configuration value
+	 * @param  string $name    Value name
+	 * @param  mixed  $default Default value
+	 * @return mixed
+	 */
+	public function get(string $name, $default = null) {
+		$ret = isset( $_ENV[$name] ) ? $_ENV[$name] : $default;
+		if ($ret === 'true' || $ret === 'false') {
+			$ret = $ret === 'true';
 		}
+		return $ret;
+	}
 
-		/**
-		 * Define a constant based on the value of a given setting
-		 * @param  string $name    Setting name
-		 * @param  string $default Default value
-		 */
-		function define($name, $default = '') {
-			$value = $this->get($name, $default);
-			if ($value) {
-				define($name, $value);
-			}
-		}
-
-		/**
-		 * Require that a setting is available
-		 * @param mixed $name Setting name or array of names
-		 */
-		function require($name) {
-			$missing = [];
-			$available = true;
-			if ( is_array($name) ) {
-				foreach ($name as $item) {
-					if ( !$this->get($item) ) {
-						$available = false;
-						$missing[] = $item;
-					}
-				}
-			} else {
-				$available = !!$this->get($name);
-				$missing[] = $name;
-			}
-			if (! $available ) {
-				throw new RuntimeException( sprintf( "Required settings are missing: %s",  implode(', ', $missing) ) );
-			}
-		}
-
-		/**
-		 * Process a configuration value
-		 * @param  string $value Raw configuration value
-		 * @return string
-		 */
-		function process($value) {
-			$ret = $value;
-			if ( preg_match('/^(["\'])([^"\']+)\1$/', $value, $matches) === 1 ) {
-				$ret = $matches[2];
-				if ( $matches[1] == '"' ) {
-					# Unescape characters
-					$ret = str_replace('\n', "\n", $ret);
-					$ret = str_replace('\r', "\r", $ret);
-					$ret = preg_replace('/\\\([^$])/', '$1', $ret);
-				}
-				if ( $matches[1] != "'" ) {
-					# Expand $VAR values
-					$ret = preg_replace_callback('/(\\\)?(\$)(?!\()\{?([A-Z0-9_]+)?\}?/', function($matches) {
-						return isset( $matches[3] ) ? $this->get( $matches[3] ) : '';
-					}, $ret);
-				}
-			}
-			return $ret;
+	/**
+	 * Define a constant based on the value of a given setting
+	 * @param  string $name    Setting name
+	 * @param  string $default Default value
+	 * @return void
+	 */
+	public function define(string $name, string $default = ''): void {
+		$value = $this->get($name, $default);
+		if ($value) {
+			define($name, $value);
 		}
 	}
-?>
+
+	/**
+	 * Require that a setting is available
+	 * @param mixed $name Setting name or array of names
+	 * @return void
+	 */
+	public function require($name): void {
+		$missing = [];
+		$available = true;
+		if ( is_array($name) ) {
+			foreach ($name as $item) {
+				if ( !$this->get($item) ) {
+					$available = false;
+					$missing[] = $item;
+				}
+			}
+		} else {
+			$available = !!$this->get($name);
+			$missing[] = $name;
+		}
+		if (! $available ) {
+			throw new RuntimeException( sprintf( "Required settings are missing: %s",  implode(', ', $missing) ) );
+		}
+	}
+
+	/**
+	 * Process a configuration value
+	 * @param  string $value Raw configuration value
+	 * @return string
+	 */
+	public function process(string $value): string {
+		$ret = $value;
+		if ( preg_match('/^(["\'])([^"\']+)\1$/', $value, $matches) === 1 ) {
+			$ret = $matches[2];
+			if ( $matches[1] == '"' ) {
+				# Unescape characters
+				$ret = str_replace('\n', "\n", $ret);
+				$ret = str_replace('\r', "\r", $ret);
+				$ret = preg_replace('/\\\([^$])/', '$1', $ret);
+			}
+			if ( $matches[1] != "'" ) {
+				# Expand $VAR values
+				$ret = preg_replace_callback('/(\\\)?(\$)(?!\()\{?([A-Z0-9_]+)?\}?/', function($matches) {
+					return isset( $matches[3] ) ? $this->get( $matches[3] ) : '';
+				}, $ret);
+			}
+		}
+		return $ret;
+	}
+}
